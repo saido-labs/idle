@@ -1,17 +1,26 @@
 package api
 
 import (
+	"github.com/saido-labs/idle/model"
 	"log"
 	"sync"
 )
 
-type Pipeline struct {
-	Input      Source
+type PipelineConfig struct {
+	Input      []Source
 	Processors []Processor
 	Output     Sink
 
 	// Configuration
 	Parallelism int
+
+	// Ideally this would be picked up somehow
+	// but for now we manually specify it
+	Schemas []model.RowSchema
+}
+
+type Pipeline struct {
+	Config PipelineConfig
 }
 
 func (p Pipeline) Start() {
@@ -20,42 +29,49 @@ func (p Pipeline) Start() {
 
 	var wg sync.WaitGroup
 
-	go func() {
-		defer close(messages)
-		for {
-			message, err := p.Input.Read()
-			if err != nil {
-				log.Println(err)
-				return
+	for _, input := range p.Config.Input {
+		go func(src Source) {
+			for {
+				msg, err := src.Read()
+				if err != nil {
+					// log.Printf("input error: %v", err)
+					continue
+				}
+				messages <- msg
 			}
-			messages <- message
-		}
-	}()
+		}(input)
+	}
 
-	workers := p.Parallelism
+	workers := p.Config.Parallelism
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func(wid int) {
 			defer wg.Done()
-			for msg := range messages {
 
-				// what do we do if a msg fails?
-				for _, proc := range p.Processors {
-					err := proc.Process(msg)
+			for msg := range messages {
+				message := model.RowFromBlob(msg)
+
+				for _, proc := range p.Config.Processors {
+					processedMessage, err := proc.Process(&p, message)
 					if err != nil {
 						log.Println(err)
+
+						// FIXME(FELIX): what do we do if a msg fails?
+						// skips remaining processors
 						break
 					}
+
+					message = processedMessage
 				}
 
-				processed <- msg
+				processed <- message.Data
 			}
 		}(i)
 	}
 
 	go func() {
 		for processed := range processed {
-			err := p.Output.Write(processed)
+			err := p.Config.Output.Write(processed)
 			if err != nil {
 				log.Println(err)
 			}

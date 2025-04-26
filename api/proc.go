@@ -1,5 +1,7 @@
 package api
 
+import "github.com/saido-labs/idle/model"
+
 type Processor interface {
-	Process(msg []byte) error
+	Process(p *Pipeline, msg model.Row) (model.Row, error)
 }

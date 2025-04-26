@@ -2,8 +2,10 @@ package internal
 
 import (
 	"context"
+	"encoding/gob"
 	"errors"
 	"github.com/saido-labs/idle/api"
+	"github.com/saido-labs/idle/model"
 	"log"
 	"os"
 	"os/signal"
@@ -11,15 +13,23 @@ import (
 	"time"
 )
 
-func Start(pipeline api.Pipeline, timeout time.Duration) {
+func init() {
+	gob.Register([]interface{}{})
+	gob.Register(model.RowData{Values: []interface{}{}})
+}
+
+func Start(cfg api.PipelineConfig, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
+	pipeline := api.Pipeline{
+		Config: cfg,
+	}
 	go func() {
-		log.Println("Starting the pipeline")
+		log.Println("Starting pipeline")
 		pipeline.Start()
 	}()
 

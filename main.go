@@ -6,5 +6,6 @@ import (
 )
 
 func main() {
-	internal.Start(api.Pipeline{})
+	// run forever...
+	internal.Start(api.PipelineConfig{}, 0)
 }
