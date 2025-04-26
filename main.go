@@ -1,7 +1,10 @@
 package main
 
-import "github.com/saido-labs/idle/internal"
+import (
+	"github.com/saido-labs/idle/api"
+	"github.com/saido-labs/idle/internal"
+)
 
 func main() {
-	internal.Start()
+	internal.Start(api.Pipeline{})
 }
