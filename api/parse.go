@@ -13,10 +13,10 @@ type JqMessageParser struct {
 	schema model.RowSchema
 }
 
-func (j *JqMessageParser) Process(p *Pipeline, msg model.Row) (model.Row, error) {
+func (j *JqMessageParser) Process(p *Pipeline, msg model.Message) (model.Message, error) {
 	v := interface{}(nil)
 	if err := json.Unmarshal(msg.Data, &v); err != nil {
-		return model.Row{}, err
+		return model.Message{}, err
 	}
 
 	res := model.RowData{
@@ -29,7 +29,7 @@ func (j *JqMessageParser) Process(p *Pipeline, msg model.Row) (model.Row, error)
 		// eval depends on type
 		value, err := e.EvalString(context.Background(), v)
 		if err != nil {
-			return model.Row{}, err
+			return model.Message{}, err
 		}
 
 		// whats best way to package this data?
@@ -38,10 +38,10 @@ func (j *JqMessageParser) Process(p *Pipeline, msg model.Row) (model.Row, error)
 
 	var buff bytes.Buffer
 	if err := gob.NewEncoder(&buff).Encode(res); err != nil {
-		return model.Row{}, err
+		return model.Message{}, err
 	}
-	
-	return model.Row{Data: buff.Bytes()}, nil
+
+	return model.Message{Data: buff.Bytes()}, nil
 }
 
 func NewMessageParser(schema model.RowSchema) Processor {

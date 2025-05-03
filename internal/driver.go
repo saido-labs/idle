@@ -16,6 +16,8 @@ import (
 func init() {
 	gob.Register([]interface{}{})
 	gob.Register(model.RowData{Values: []interface{}{}})
+	gob.Register(api.Function{})
+	gob.Register(api.RowIdentifier{})
 }
 
 func Start(cfg api.PipelineConfig, timeout time.Duration) {

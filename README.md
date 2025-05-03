@@ -8,3 +8,12 @@ idle hopes to integrate in the following ways:
 2. ? to {kafka, s3, ?}
 
 with point #1 as priority.
+
+## notes
+
+## roadmap
+
+- sql queries are parsed on start and baked in as an Eval Tree
+- protobuf is supported out of the box
+  - how do we specify schemas?
+- 

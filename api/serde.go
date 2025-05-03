@@ -7,15 +7,15 @@ import (
 
 type JsonEncoder struct{}
 
-func (j *JsonEncoder) Process(p *Pipeline, msg model.Row) (model.Row, error) {
+func (j *JsonEncoder) Process(p *Pipeline, msg model.Message) (model.Message, error) {
 	rd := model.RowDataFromBlob(msg.Data)
 
 	res, err := json.Marshal(rd.Values)
 	if err != nil {
-		return model.Row{}, err
+		return model.Message{}, err
 	}
 
-	return model.Row{Data: res}, nil
+	return model.Message{Data: res}, nil
 }
 
 func NewJsonEncoder() *JsonEncoder {

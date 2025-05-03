@@ -24,8 +24,8 @@ type Pipeline struct {
 }
 
 func (p Pipeline) Start() {
-	messages := make(chan []byte)
-	processed := make(chan []byte)
+	messages := make(chan model.Message)
+	processed := make(chan model.Message)
 
 	var wg sync.WaitGroup
 
@@ -37,7 +37,7 @@ func (p Pipeline) Start() {
 					// log.Printf("input error: %v", err)
 					continue
 				}
-				messages <- msg
+				messages <- model.NewMessage(msg)
 			}
 		}(input)
 	}
@@ -48,30 +48,27 @@ func (p Pipeline) Start() {
 		go func(wid int) {
 			defer wg.Done()
 
-			for msg := range messages {
-				message := model.RowFromBlob(msg)
+			for currentMessage := range messages {
+				message := currentMessage
 
 				for _, proc := range p.Config.Processors {
 					processedMessage, err := proc.Process(&p, message)
 					if err != nil {
 						log.Println(err)
-
-						// FIXME(FELIX): what do we do if a msg fails?
-						// skips remaining processors
 						break
 					}
 
 					message = processedMessage
 				}
 
-				processed <- message.Data
+				processed <- message
 			}
 		}(i)
 	}
 
 	go func() {
 		for processed := range processed {
-			err := p.Config.Output.Write(processed)
+			err := p.Config.Output.Write(processed.Data)
 			if err != nil {
 				log.Println(err)
 			}

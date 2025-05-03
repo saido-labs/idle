@@ -1,11 +1,13 @@
 package internal
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/saido-labs/idle/api"
 	"github.com/saido-labs/idle/mocks"
 	"github.com/saido-labs/idle/model"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"testing"
 	"time"
 )
@@ -54,12 +56,7 @@ func Test_PipelineToStdout(t *testing.T) {
 		// simple processor to take the first char
 		Processors: []api.Processor{
 			api.NewMessageParser(schema),
-
-			//api.NewQuery("SELECT SUBSTRING(word from 1 for 1)"),
-			//api.NewQuery("SELECT SUBSTRING(word, 1, 1)"),
-			api.NewQuery("SELECT content"),
-			//api.NewQuery("SELECT LEFT(content, 1) as char, content as old_content"),
-
+			api.NewQuery("SELECT LEFT(content, 1)"),
 			api.NewJsonEncoder(),
 		},
 
@@ -68,5 +65,15 @@ func Test_PipelineToStdout(t *testing.T) {
 
 	Start(cfg, 1*time.Second)
 
-	assert.Equal(t, "helloworld!", output.Output())
+	result := output.Output()
+
+	log.Println("Result is", result)
+
+	var items []string
+	err := json.Unmarshal([]byte(result), &items)
+	assert.NoError(t, err)
+
+	// single character entries.
+	assert.Equal(t, 1, len(items[0]))
+	assert.Equal(t, 1, len(items[1]))
 }
