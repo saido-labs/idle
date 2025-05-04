@@ -10,7 +10,7 @@ import (
 
 type JsonEncoder struct{}
 
-func (j *JsonEncoder) Process(p *Pipeline, schema RowSchema, msg model.Message) (model.Message, error) {
+func (j *JsonEncoder) Process(p *Pipeline, _, _ RowSchema, msg model.Message) (model.Message, error) {
 	rd, err := RowDataFromBlob(msg.Data)
 	if err != nil {
 		if !errors.Is(err, io.EOF) {

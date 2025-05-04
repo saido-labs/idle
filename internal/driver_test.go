@@ -44,8 +44,11 @@ func Test_PipelineToStdout_BasicMapAndFilter_GracefulErrors(t *testing.T) {
 		SideOutput: sideOutput,
 
 		Processors: []api.PipelineStep{
-			api.NewPipelineStep("input.parser", api.NewJqMessageParser(), api.RowSchema{
-				Column: []string{"$.content", "$.author_name"},
+			api.NewPipelineStep("input.parser", api.NewJqMessageParser(api.NewJqParams(map[string]string{
+				"content":     "$.content",
+				"author_name": "$.author_name",
+			})), api.RowSchema{
+				Column: []string{"content", "author_name"},
 				Types:  []api.Type{api.TypeString, api.TypeString},
 			}),
 
@@ -100,20 +103,25 @@ func Test_PipelineToStdout_BasicMapAndFilter(t *testing.T) {
 
 		// simple processor to take the first char
 		Processors: []api.PipelineStep{
-			api.NewPipelineStep("input.parser", api.NewJqMessageParser(), api.RowSchema{
-				Column: []string{"$.content", "$.author_name"},
+			api.NewPipelineStep("input.parser", api.NewJqMessageParser(api.NewJqParams(map[string]string{
+				"content":     "$.content",
+				"author_name": "$.author_name",
+			})), api.RowSchema{
+				Column: []string{"content", "author_name"},
 				Types:  []api.Type{api.TypeString, api.TypeString},
 			}),
 
 			// where author name is Felix
 			// pass along the content and author_name fields
 			api.NewPipelineStep("author.filter", api.NewQuery("SELECT content, author_name WHERE author_name = 'felix angell'"), api.RowSchema{
+				// can we extract these from postgres casts or interpret them otherwise?
 				Column: []string{"content", "author_name"},
 				Types:  []api.Type{api.TypeString, api.TypeString},
 			}),
 
 			// we need to alias with a name for mapping against a schema output?
-			api.NewPipelineStep("article.join", api.NewQuery("SELECT concat(content, ':', author_name)"), api.RowSchema{
+			// e.g. concat() as result
+			api.NewPipelineStep("article.join", api.NewQuery("SELECT concat(content, ':', upper(author_name))"), api.RowSchema{
 				Column: []string{"result"},
 				Types:  []api.Type{api.TypeString},
 			}),
@@ -124,12 +132,12 @@ func Test_PipelineToStdout_BasicMapAndFilter(t *testing.T) {
 			}),
 		},
 
-		Parallelism: 4,
+		Parallelism: 1,
 	}
 
 	Start(cfg, 1*time.Second)
 
 	result := output.Output()
 
-	assert.Equal(t, `["felix angell:hello!"]`, result)
+	assert.Equal(t, `["hello!:FELIX ANGELL"]`, result)
 }

@@ -328,7 +328,13 @@ func evaluateRowIdentifier(schema RowSchema, e *RowIdentifier, in *Row) (Value, 
 	if idx == -1 {
 		return nil, fmt.Errorf("no such column '%s' exists", e.Name)
 	}
-	return in.GetColumn(idx), nil
+
+	val := in.GetColumn(idx)
+	if val == nil {
+		return nil, fmt.Errorf("access '%s'. out of bounds", e.Name)
+	}
+
+	return val, nil
 }
 
 func evaluateFunc(schema RowSchema, e *Function, in *Row) Value {

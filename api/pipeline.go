@@ -45,9 +45,17 @@ func (p Pipeline) Start() {
 
 				processingFailed := false
 
+				var inSchema RowSchema
+
 				for _, step := range p.Processors {
-					processedMessage, err := step.Proc.Process(&p, step.Schema, message)
-					message = processedMessage
+					log.Println(step.Name+":", inSchema)
+					log.Println("produces", step.Schema)
+					log.Println("Message:", string(message.Data))
+
+					var err error
+					message, err = step.Proc.Process(&p, inSchema, step.Schema, message)
+
+					inSchema = step.Schema
 
 					if err != nil {
 						log.Printf("Error processing message %v: %v", string(message.Data), err)

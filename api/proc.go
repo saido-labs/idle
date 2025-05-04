@@ -3,7 +3,7 @@ package api
 import "github.com/saido-labs/idle/model"
 
 type Processor interface {
-	Process(p *Pipeline, schema RowSchema, msg model.Message) (model.Message, error)
+	Process(p *Pipeline, in, out RowSchema, msg model.Message) (model.Message, error)
 }
 
 type PipelineStep struct {

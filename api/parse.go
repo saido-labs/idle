@@ -10,31 +10,38 @@ import (
 	"github.com/saido-labs/idle/model"
 )
 
-type JqMessageParser struct{}
+type JqMessageParser struct {
+	params JqParserParams
+}
 
-func (j *JqMessageParser) Process(p *Pipeline, schema RowSchema, msg model.Message) (model.Message, error) {
+func (j *JqMessageParser) Process(p *Pipeline, in, out RowSchema, msg model.Message) (model.Message, error) {
 	v := interface{}(nil)
 	if err := json.Unmarshal(msg.Data, &v); err != nil {
 		return msg, err
 	}
 
 	res := Row{
-		Values: []Value{},
+		Values: make([]Value, 0, len(j.params.queries)),
 	}
 
-	for idx, column := range schema.Column {
-		e, err := jsonpath.New(column)
+	for column, path := range j.params.queries {
+		idx := out.ColIndex(column)
+		if idx == -1 {
+			return msg, fmt.Errorf("unknown column: %s", column)
+		}
+
+		e, err := jsonpath.New(path)
 		if err != nil {
-			return msg, err
+			return msg, fmt.Errorf("invalid jq path: %s", path)
 		}
 
 		value, err := e.EvalString(context.Background(), v)
 		if err != nil {
-			return msg, err
+			return msg, fmt.Errorf("jq evaluation error: %v", err.Error())
 		}
 
 		// whats best way to package this data?
-		res.Values = append(res.Values, ValueFromType(schema.Types[idx], value))
+		res.Values = append(res.Values, ValueFromType(out.Types[idx], value))
 	}
 
 	var buff bytes.Buffer
@@ -54,6 +61,18 @@ func ValueFromType(s Type, value string) Value {
 	}
 }
 
-func NewJqMessageParser() Processor {
-	return &JqMessageParser{}
+type JqParserParams struct {
+	queries map[string]string
+}
+
+func NewJqParams(queries map[string]string) JqParserParams {
+	return JqParserParams{
+		queries: queries,
+	}
+}
+
+func NewJqMessageParser(p JqParserParams) Processor {
+	return &JqMessageParser{
+		params: p,
+	}
 }

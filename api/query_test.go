@@ -15,7 +15,6 @@ func TestQuery_BuildEvalTree_FilterByInterval(t *testing.T) {
 	NewQuery("SELECT created_at WHERE created_at >= now() - interval '1 hour'")
 }
 
-// FIXME move to parameterised test
 func TestQuery_BuildEvalTree_Functions(t *testing.T) {
 	testCases := []struct {
 		name     string
@@ -46,7 +45,9 @@ func TestQuery_BuildEvalTree_Functions(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			query := NewQuery(tc.input)
-			res := evaluate(RowSchema{}, query.GetEvaluation().Reads[0], &Row{})
+			res, err := evaluate(RowSchema{}, query.GetEvaluation().Reads[0], &Row{})
+			assert.NoError(t, err)
+			
 			if !res.Equals(&StringValue{tc.expected}) {
 				t.Errorf("expected %s, got %s", tc.expected, res)
 			}

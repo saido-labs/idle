@@ -3,7 +3,9 @@ package api
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"slices"
+	"strings"
 )
 
 type RowSchema struct {
@@ -15,11 +17,18 @@ func (s RowSchema) ColIndex(name string) int {
 	return slices.Index(s.Column, name)
 }
 
+func (s RowSchema) String() string {
+	return fmt.Sprintf("%v", strings.Join(s.Column, ";"))
+}
+
 type Row struct {
 	Values []Value
 }
 
 func (r *Row) GetColumn(col int) Value {
+	if col >= len(r.Values) || col < 0 {
+		return nil
+	}
 	return r.Values[col]
 }
 

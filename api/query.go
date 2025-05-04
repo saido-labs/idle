@@ -22,8 +22,8 @@ func NewQuery(query string) *Query {
 	return res
 }
 
-func (q *Query) Process(p *Pipeline, schema RowSchema, msg model.Message) (model.Message, error) {
-	in, err := RowDataFromBlob(msg.Data)
+func (q *Query) Process(p *Pipeline, in, out RowSchema, msg model.Message) (model.Message, error) {
+	incomingMessage, err := RowDataFromBlob(msg.Data)
 	if err != nil {
 		if !errors.Is(err, io.EOF) {
 			log.Fatalf("Query(%s): Error: %v\n", q.query, err.Error())
@@ -37,20 +37,20 @@ func (q *Query) Process(p *Pipeline, schema RowSchema, msg model.Message) (model
 	}
 
 	for idx, value := range q.GetEvaluation().Reads {
-		rootExpr, err := evaluateRootLevelExpr(schema, value, in)
+		rootExpr, err := evaluateRootLevelExpr(in, value, incomingMessage)
 		if err != nil {
 			log.Fatalf("Query(%s): Error: %v\n", q.query, err.Error())
 		}
-		
+
 		rd.SetColumn(idx, rootExpr)
 	}
 
-	out := model.NewMessage(RowDataToBlob(rd))
+	message := model.NewMessage(RowDataToBlob(rd))
 
 	// compute if we filter or not for this
 	// specific row.
 	if filterExpr := q.GetEvaluation().Filter; filterExpr != nil {
-		res, err := evaluateRootLevelExpr(schema, filterExpr, in)
+		res, err := evaluateRootLevelExpr(in, filterExpr, incomingMessage)
 		if err != nil {
 			log.Fatalf("Query(%s): Error: %v\n", q.query, err.Error())
 		}
@@ -63,7 +63,7 @@ func (q *Query) Process(p *Pipeline, schema RowSchema, msg model.Message) (model
 		}
 	}
 
-	return out, nil
+	return message, nil
 }
 
 func (q *Query) GetEvaluation() *Evaluation {
