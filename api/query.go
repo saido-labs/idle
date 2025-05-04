@@ -44,7 +44,7 @@ func (q *Query) Process(p *Pipeline, schema RowSchema, msg model.Message) (model
 
 	// compute if we filter or not for this
 	// specific row.
-	filterExpr := q.GetEvaluation().Filters
+	filterExpr := q.GetEvaluation().Filter
 	if filterExpr != nil && evaluate(schema, filterExpr, in) == False {
 		return model.Message{}, nil
 	}

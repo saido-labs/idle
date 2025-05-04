@@ -11,8 +11,8 @@ import (
 )
 
 type Evaluation struct {
-	Reads   []Value
-	Filters Value
+	Reads  []Value
+	Filter Value
 
 	// this is probably quite hard to pull off.
 	Joins []any
@@ -233,9 +233,9 @@ func (q *Query) indexOfColumn(column string) int {
 
 func (q *Evaluator) processSelect(stmt *sqlparser.Select) *Evaluation {
 	eval := &Evaluation{
-		Reads:   []Value{},
-		Filters: nil,
-		Joins:   nil,
+		Reads:  []Value{},
+		Filter: nil,
+		Joins:  nil,
 	}
 
 	// 1. parse the reads from select
@@ -258,7 +258,7 @@ func (q *Evaluator) processSelect(stmt *sqlparser.Select) *Evaluation {
 		if err != nil {
 			panic(err)
 		}
-		eval.Filters = whereExpr
+		eval.Filter = whereExpr
 	}
 
 	return eval

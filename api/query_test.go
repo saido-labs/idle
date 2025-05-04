@@ -31,9 +31,9 @@ func TestQuery_BuildEvalTree_SelectWithFunction_AndFilter(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.Len(t, res.Reads, 2)
 
-	assert.NotEmptyf(t, res.Filters, "Expected a filter by author name")
+	assert.NotEmptyf(t, res.Filter, "Expected a filter by author name")
 
-	comp, ok := res.Filters[0].(*BinaryExpr)
+	comp, ok := res.Filter.(*BinaryExpr)
 	assert.True(t, ok)
 
 	assert.Equal(t, "=", comp.Operator)
