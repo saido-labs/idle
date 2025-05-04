@@ -1,17 +1,16 @@
 package api
 
 import (
-	"github.com/saido-labs/idle/model"
 	"strings"
 )
 
-func concat(schema model.RowSchema, fn *Function, rd Row) Value {
+func concat(schema RowSchema, fn *Function, rd *Row) Value {
 	var sb strings.Builder
 
 	for _, p := range fn.Params {
 		result := evaluate(schema, p, rd)
 
-		conv, ok := result.Cast(TypeString).(StringValue)
+		conv, ok := result.Cast(TypeString).(*StringValue)
 		if !ok {
 			panic("cannot cast to string")
 		}
@@ -21,5 +20,5 @@ func concat(schema model.RowSchema, fn *Function, rd Row) Value {
 		}
 	}
 
-	return StringValue{Value: sb.String()}
+	return &StringValue{Value: sb.String()}
 }

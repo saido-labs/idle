@@ -3,16 +3,16 @@ package api
 import "github.com/saido-labs/idle/model"
 
 type Processor interface {
-	Process(p *Pipeline, schema model.RowSchema, msg model.Message) (model.Message, error)
+	Process(p *Pipeline, schema RowSchema, msg model.Message) (model.Message, error)
 }
 
 type PipelineStep struct {
 	Name   string
 	Proc   Processor
-	Schema model.RowSchema
+	Schema RowSchema
 }
 
-func NewPipelineStep(name string, proc Processor, schema model.RowSchema) PipelineStep {
+func NewPipelineStep(name string, proc Processor, schema RowSchema) PipelineStep {
 	return PipelineStep{
 		Name:   name,
 		Proc:   proc,

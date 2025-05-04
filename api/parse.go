@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"github.com/PaesslerAG/jsonpath"
 	"github.com/saido-labs/idle/model"
 )
 
 type JqMessageParser struct{}
 
-func (j *JqMessageParser) Process(p *Pipeline, schema model.RowSchema, msg model.Message) (model.Message, error) {
+func (j *JqMessageParser) Process(p *Pipeline, schema RowSchema, msg model.Message) (model.Message, error) {
 	v := interface{}(nil)
 	if err := json.Unmarshal(msg.Data, &v); err != nil {
 		return model.Message{}, err
@@ -42,12 +43,12 @@ func (j *JqMessageParser) Process(p *Pipeline, schema model.RowSchema, msg model
 	return model.Message{Data: buff.Bytes()}, nil
 }
 
-func ValueFromType(s string, value string) Value {
+func ValueFromType(s Type, value string) Value {
 	switch s {
-	case "STRING":
-		return StringValue{Value: value}
+	case TypeString:
+		return &StringValue{Value: value}
 	default:
-		panic("unknown type: " + s)
+		panic(fmt.Sprintf("unknown type: %v", s))
 	}
 }
 

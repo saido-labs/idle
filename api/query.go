@@ -1,7 +1,10 @@
 package api
 
 import (
+	"errors"
 	"github.com/saido-labs/idle/model"
+	"io"
+	"log"
 )
 
 // Query represents an ANSI(?) SQL
@@ -19,8 +22,15 @@ func NewQuery(query string) *Query {
 	return res
 }
 
-func (q *Query) Process(p *Pipeline, schema model.RowSchema, msg model.Message) (model.Message, error) {
-	in := RowDataFromBlob(msg.Data)
+func (q *Query) Process(p *Pipeline, schema RowSchema, msg model.Message) (model.Message, error) {
+	in, err := RowDataFromBlob(msg.Data)
+	if err != nil {
+		if !errors.Is(err, io.EOF) {
+			log.Fatalf("Query(%s): Error: %v\n", q.query, err.Error())
+			return model.Message{}, err
+		}
+		return model.Message{}, nil
+	}
 
 	rd := &Row{
 		Values: make([]Value, len(q.GetEvaluation().Reads)),
@@ -31,6 +41,14 @@ func (q *Query) Process(p *Pipeline, schema model.RowSchema, msg model.Message) 
 	}
 
 	out := model.NewMessage(RowDataToBlob(rd))
+
+	// compute if we filter or not for this
+	// specific row.
+	filterExpr := q.GetEvaluation().Filters
+	if filterExpr != nil && evaluate(schema, filterExpr, in) == False {
+		return model.Message{}, nil
+	}
+
 	return out, nil
 }
 

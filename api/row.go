@@ -3,7 +3,17 @@ package api
 import (
 	"bytes"
 	"encoding/gob"
+	"slices"
 )
+
+type RowSchema struct {
+	Column []string
+	Types  []Type
+}
+
+func (s RowSchema) ColIndex(name string) int {
+	return slices.Index(s.Column, name)
+}
 
 type Row struct {
 	Values []Value
@@ -25,11 +35,11 @@ func RowDataToBlob(rd *Row) []byte {
 	return buf.Bytes()
 }
 
-func RowDataFromBlob(blob []byte) Row {
-	var rd Row
+func RowDataFromBlob(blob []byte) (*Row, error) {
+	rd := &Row{}
 	err := gob.NewDecoder(bytes.NewReader(blob)).Decode(&rd)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return rd
+	return rd, nil
 }

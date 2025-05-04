@@ -4,8 +4,7 @@ import (
 	"errors"
 	"github.com/saido-labs/idle/api"
 	"github.com/saido-labs/idle/mocks"
-	"github.com/saido-labs/idle/model"
-	"log"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -25,7 +24,7 @@ func (m *mockedSource) Read() ([]byte, error) {
 	return []byte(msg), nil
 }
 
-func Test_PipelineToStdout(t *testing.T) {
+func Test_PipelineToStdout_BasicMapAndFilter(t *testing.T) {
 	output := &mocks.MockLogger{}
 
 	cfg := api.PipelineConfig{
@@ -49,27 +48,27 @@ func Test_PipelineToStdout(t *testing.T) {
 
 		// simple processor to take the first char
 		Processors: []api.PipelineStep{
-			api.NewPipelineStep("input.parser", api.NewMessageParser(), model.RowSchema{
+			api.NewPipelineStep("input.parser", api.NewMessageParser(), api.RowSchema{
 				Column: []string{"$.content", "$.author_name"},
-				Types:  []string{"STRING", "STRING"},
+				Types:  []api.Type{api.TypeString, api.TypeString},
 			}),
 
 			// where author name is Felix
 			// pass along the content and author_name fields
-			api.NewPipelineStep("author.filter", api.NewQuery("SELECT content, author_name WHERE author_name = 'felix angell'"), model.RowSchema{
+			api.NewPipelineStep("author.filter", api.NewQuery("SELECT content, author_name WHERE author_name = 'felix angell'"), api.RowSchema{
 				Column: []string{"content", "author_name"},
-				Types:  []string{"STRING", "STRING"},
+				Types:  []api.Type{api.TypeString, api.TypeString},
 			}),
 
 			// we need to alias with a name for mapping against a schema output?
-			api.NewPipelineStep("article.join", api.NewQuery("SELECT concat(2, ':', 1)"), model.RowSchema{
+			api.NewPipelineStep("article.join", api.NewQuery("SELECT concat(2, ':', 1)"), api.RowSchema{
 				Column: []string{"result"},
-				Types:  []string{"STRING"},
+				Types:  []api.Type{api.TypeString},
 			}),
 
-			api.NewPipelineStep("output.processor", api.NewJsonEncoder(), model.RowSchema{
+			api.NewPipelineStep("output.processor", api.NewJsonEncoder(), api.RowSchema{
 				Column: []string{"result"},
-				Types:  []string{"STRING"},
+				Types:  []api.Type{api.TypeString},
 			}),
 		},
 
@@ -80,5 +79,5 @@ func Test_PipelineToStdout(t *testing.T) {
 
 	result := output.Output()
 
-	log.Println("Result is", result)
+	assert.Equal(t, `["felix angell:hello!"]`, result)
 }

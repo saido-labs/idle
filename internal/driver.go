@@ -17,9 +17,9 @@ func init() {
 	gob.Register(api.Row{Values: []api.Value{}})
 	gob.Register(api.Function{})
 	gob.Register(api.RowIdentifier{})
-	gob.Register(api.StringValue{})
-	gob.Register(api.IntegerValue{})
-	gob.Register(api.FloatValue{})
+	gob.Register(&api.StringValue{})
+	gob.Register(&api.IntegerValue{})
+	gob.Register(&api.FloatValue{})
 }
 
 func Start(cfg api.PipelineConfig, timeout time.Duration) {
