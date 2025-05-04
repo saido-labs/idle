@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"errors"
 	"github.com/saido-labs/idle/api"
-	"github.com/saido-labs/idle/model"
 	"log"
 	"os"
 	"os/signal"
@@ -15,9 +14,12 @@ import (
 
 func init() {
 	gob.Register([]interface{}{})
-	gob.Register(model.RowData{Values: []interface{}{}})
+	gob.Register(api.Row{Values: []api.Value{}})
 	gob.Register(api.Function{})
 	gob.Register(api.RowIdentifier{})
+	gob.Register(api.StringValue{})
+	gob.Register(api.IntegerValue{})
+	gob.Register(api.FloatValue{})
 }
 
 func Start(cfg api.PipelineConfig, timeout time.Duration) {

@@ -7,8 +7,8 @@ import (
 
 type JsonEncoder struct{}
 
-func (j *JsonEncoder) Process(p *Pipeline, msg model.Message) (model.Message, error) {
-	rd := model.RowDataFromBlob(msg.Data)
+func (j *JsonEncoder) Process(p *Pipeline, schema model.RowSchema, msg model.Message) (model.Message, error) {
+	rd := RowDataFromBlob(msg.Data)
 
 	res, err := json.Marshal(rd.Values)
 	if err != nil {

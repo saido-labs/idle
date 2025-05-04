@@ -8,15 +8,11 @@ import (
 
 type PipelineConfig struct {
 	Input      []Source
-	Processors []Processor
+	Processors []PipelineStep
 	Output     Sink
 
 	// Configuration
 	Parallelism int
-
-	// Ideally this would be picked up somehow
-	// but for now we manually specify it
-	Schemas []model.RowSchema
 }
 
 type Pipeline struct {
@@ -51,8 +47,8 @@ func (p Pipeline) Start() {
 			for currentMessage := range messages {
 				message := currentMessage
 
-				for _, proc := range p.Config.Processors {
-					processedMessage, err := proc.Process(&p, message)
+				for _, step := range p.Config.Processors {
+					processedMessage, err := step.Proc.Process(&p, step.Schema, message)
 					if err != nil {
 						log.Println(err)
 						break

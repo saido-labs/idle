@@ -12,14 +12,26 @@ type Query struct {
 }
 
 func NewQuery(query string) *Query {
-	return &Query{
+	res := &Query{
 		query: query,
 	}
+	res.buildEvalTree()
+	return res
 }
 
-func (q *Query) Process(p *Pipeline, msg model.Message) (model.Message, error) {
-	// do something with the eval tree
-	return msg, nil
+func (q *Query) Process(p *Pipeline, schema model.RowSchema, msg model.Message) (model.Message, error) {
+	in := RowDataFromBlob(msg.Data)
+
+	rd := &Row{
+		Values: make([]Value, len(q.GetEvaluation().Reads)),
+	}
+
+	for idx, value := range q.GetEvaluation().Reads {
+		rd.SetColumn(idx, evaluate(schema, value, in))
+	}
+
+	out := model.NewMessage(RowDataToBlob(rd))
+	return out, nil
 }
 
 func (q *Query) GetEvaluation() *Evaluation {

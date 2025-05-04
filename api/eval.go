@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/saido-labs/idle/model"
 	"github.com/xwb1989/sqlparser"
 	"log"
 	"reflect"
@@ -18,27 +19,84 @@ type Evaluation struct {
 	Joins []any
 }
 
-type Value interface{}
+type Type int
+
+const (
+	TypeUnspecified Type = iota
+	TypeString
+	TypeInteger
+	TypeFloat
+)
+
+type Value interface {
+	Cast(target Type) Value
+	GetType() Type
+}
 
 type BinaryExpr struct {
 	Operator    string
 	Left, Right Value
 }
 
+func (e *BinaryExpr) GetType() Type {
+	return e.Left.GetType()
+}
+
+func (e *BinaryExpr) Cast(target Type) Value {
+	panic("illegal state")
+}
+
 type IntegerValue struct {
 	Value int64
+}
+
+func (i IntegerValue) GetType() Type {
+	return TypeInteger
+}
+
+func (i IntegerValue) Cast(target Type) Value {
+	panic("implement me")
 }
 
 type FloatValue struct {
 	Value float64
 }
 
+func (i FloatValue) GetType() Type {
+	return TypeFloat
+}
+
+func (i FloatValue) Cast(target Type) Value {
+	panic("implement me")
+}
+
 type StringValue struct {
 	Value string
 }
 
+func (i StringValue) GetType() Type {
+	return TypeString
+}
+
+func (i StringValue) Cast(target Type) Value {
+	switch target {
+	case TypeString:
+		return i
+	default:
+		panic("not yet implemented")
+	}
+}
+
 type RowIdentifier struct {
 	Name string
+}
+
+func (i RowIdentifier) GetType() Type {
+	panic("implement me")
+}
+
+func (i RowIdentifier) Cast(target Type) Value {
+	panic("implement me")
 }
 
 func NewRowIdentifier(name string) *RowIdentifier {
@@ -53,6 +111,15 @@ type Function struct {
 	Params []Value
 }
 
+func (f *Function) GetType() Type {
+	// FIXME?
+	return TypeUnspecified
+}
+
+func (f *Function) Cast(Type) Value {
+	panic("illegal state")
+}
+
 func NewFunction(name string, params []Value) *Function {
 	return &Function{name, params}
 }
@@ -61,7 +128,7 @@ func NewFunction(name string, params []Value) *Function {
 
 type Evaluator struct{}
 
-func (q *Evaluator) parseValue(param *sqlparser.SQLVal) any {
+func (q *Evaluator) parseValue(param *sqlparser.SQLVal) Value {
 	switch param.Type {
 	case sqlparser.IntVal:
 		val, err := strconv.ParseInt(string(param.Val), 10, 64)
@@ -198,23 +265,53 @@ func (q *Evaluator) Eval(query string) *Evaluation {
 	}
 }
 
-func evaluate(e any) any {
-	switch e := e.(type) {
-	case *Function:
-		return evaluateFunc(e)
+func evaluateRowIdentifier(schema model.RowSchema, e *RowIdentifier, in Row) Value {
+	// return the value from the message
+	idx := schema.ColIndex(e.Name)
+	if idx == -1 {
+		panic("no column found " + e.Name)
+	}
+	return in.GetColumn(idx)
+}
+
+func evaluateFunc(schema model.RowSchema, e *Function, in Row) Value {
+	switch fnName := strings.ToLower(e.Name); fnName {
+	case "concat":
+		return concat(schema, e, in)
 	default:
-		log.Println(reflect.TypeOf(e), "not yet implemented")
-		panic("not yet handled")
+		panic(fnName + " is not yet implemented")
 	}
 }
 
-func evaluateFunc(e *Function) any {
-	switch strings.ToLower(e.Name) {
-	case "left":
-		log.Println(e.Params)
-		return 123
+// depends on context? in a select
+// this means grab the column at e
+func evaluateIntegerValue(_ model.RowSchema, e *IntegerValue, in Row) Value {
+	// downsizing edge-case.
+	index := int(e.Value)
 
+	// the queries are not 0-indexed but 1-indexed
+	// so we have to normalize them
+	adjustedIndex := index - 1
+
+	return in.GetColumn(adjustedIndex)
+}
+
+func evaluateConstant(schema model.RowSchema, e *StringValue, in Row) Value {
+	return e
+}
+
+func evaluate(schema model.RowSchema, e Value, in Row) Value {
+	switch e := e.(type) {
+	case *Function:
+		return evaluateFunc(schema, e, in)
+	case *RowIdentifier:
+		return evaluateRowIdentifier(schema, e, in)
+	case *IntegerValue:
+		return evaluateIntegerValue(schema, e, in)
+	case *StringValue:
+		return evaluateConstant(schema, e, in)
 	default:
-		return 456
+		log.Println(reflect.TypeOf(e), "not yet implemented")
+		panic("not yet handled")
 	}
 }

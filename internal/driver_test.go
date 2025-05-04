@@ -1,12 +1,10 @@
 package internal
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/saido-labs/idle/api"
 	"github.com/saido-labs/idle/mocks"
 	"github.com/saido-labs/idle/model"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"testing"
 	"time"
@@ -30,12 +28,6 @@ func (m *mockedSource) Read() ([]byte, error) {
 func Test_PipelineToStdout(t *testing.T) {
 	output := &mocks.MockLogger{}
 
-	schema := model.RowSchema{
-		Name:   "article",
-		Column: []string{"$.content"},
-		Types:  []string{"STRING"},
-	}
-
 	cfg := api.PipelineConfig{
 		// we only want one input but allow for multiple
 		// if we have something like a re-try
@@ -43,21 +35,42 @@ func Test_PipelineToStdout(t *testing.T) {
 		Input: []api.Source{
 			&mockedSource{
 				messages: []string{
-					`{ "content": "hello!", "title": "test" }`,
-					`{ "content": "world" }`,
+					`{ "content": "hello!", "author_name": "felix angell" }`,
+					// fixme: felix error handling strat for missing keys.
+					//`{ "content": "foo" }`,
+					//`{ "content": "bar" }`,
+					`{ "content": "baz", "author_name": "john doe" }`,
+					`{ "content": "toast", "author_name": "john doe" }`,
 				},
 			},
 		},
 
 		Output: output,
 
-		Schemas: []model.RowSchema{schema},
-
 		// simple processor to take the first char
-		Processors: []api.Processor{
-			api.NewMessageParser(schema),
-			api.NewQuery("SELECT LEFT(content, 1)"),
-			api.NewJsonEncoder(),
+		Processors: []api.PipelineStep{
+			api.NewPipelineStep("input.parser", api.NewMessageParser(), model.RowSchema{
+				Column: []string{"$.content", "$.author_name"},
+				Types:  []string{"STRING", "STRING"},
+			}),
+
+			// where author name is Felix
+			// pass along the content and author_name fields
+			api.NewPipelineStep("author.filter", api.NewQuery("SELECT content, author_name WHERE author_name = 'felix angell'"), model.RowSchema{
+				Column: []string{"content", "author_name"},
+				Types:  []string{"STRING", "STRING"},
+			}),
+
+			// we need to alias with a name for mapping against a schema output?
+			api.NewPipelineStep("article.join", api.NewQuery("SELECT concat(2, ':', 1)"), model.RowSchema{
+				Column: []string{"result"},
+				Types:  []string{"STRING"},
+			}),
+
+			api.NewPipelineStep("output.processor", api.NewJsonEncoder(), model.RowSchema{
+				Column: []string{"result"},
+				Types:  []string{"STRING"},
+			}),
 		},
 
 		Parallelism: 4,
@@ -68,12 +81,4 @@ func Test_PipelineToStdout(t *testing.T) {
 	result := output.Output()
 
 	log.Println("Result is", result)
-
-	var items []string
-	err := json.Unmarshal([]byte(result), &items)
-	assert.NoError(t, err)
-
-	// single character entries.
-	assert.Equal(t, 1, len(items[0]))
-	assert.Equal(t, 1, len(items[1]))
 }

@@ -9,21 +9,19 @@ import (
 	"github.com/saido-labs/idle/model"
 )
 
-type JqMessageParser struct {
-	schema model.RowSchema
-}
+type JqMessageParser struct{}
 
-func (j *JqMessageParser) Process(p *Pipeline, msg model.Message) (model.Message, error) {
+func (j *JqMessageParser) Process(p *Pipeline, schema model.RowSchema, msg model.Message) (model.Message, error) {
 	v := interface{}(nil)
 	if err := json.Unmarshal(msg.Data, &v); err != nil {
 		return model.Message{}, err
 	}
 
-	res := model.RowData{
-		Values: []interface{}{},
+	res := Row{
+		Values: []Value{},
 	}
 
-	for _, column := range j.schema.Column {
+	for idx, column := range schema.Column {
 		e, _ := jsonpath.New(column)
 
 		// eval depends on type
@@ -33,7 +31,7 @@ func (j *JqMessageParser) Process(p *Pipeline, msg model.Message) (model.Message
 		}
 
 		// whats best way to package this data?
-		res.Values = append(res.Values, value)
+		res.Values = append(res.Values, ValueFromType(schema.Types[idx], value))
 	}
 
 	var buff bytes.Buffer
@@ -44,8 +42,15 @@ func (j *JqMessageParser) Process(p *Pipeline, msg model.Message) (model.Message
 	return model.Message{Data: buff.Bytes()}, nil
 }
 
-func NewMessageParser(schema model.RowSchema) Processor {
-	return &JqMessageParser{
-		schema: schema,
+func ValueFromType(s string, value string) Value {
+	switch s {
+	case "STRING":
+		return StringValue{Value: value}
+	default:
+		panic("unknown type: " + s)
 	}
+}
+
+func NewMessageParser() Processor {
+	return &JqMessageParser{}
 }
