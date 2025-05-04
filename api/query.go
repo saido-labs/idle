@@ -37,7 +37,7 @@ func (q *Query) Process(p *Pipeline, schema RowSchema, msg model.Message) (model
 	}
 
 	for idx, value := range q.GetEvaluation().Reads {
-		rd.SetColumn(idx, evaluate(schema, value, in))
+		rd.SetColumn(idx, evaluateRootLevelExpr(schema, value, in))
 	}
 
 	out := model.NewMessage(RowDataToBlob(rd))
@@ -45,7 +45,7 @@ func (q *Query) Process(p *Pipeline, schema RowSchema, msg model.Message) (model
 	// compute if we filter or not for this
 	// specific row.
 	filterExpr := q.GetEvaluation().Filter
-	if filterExpr != nil && evaluate(schema, filterExpr, in) == False {
+	if filterExpr != nil && evaluateRootLevelExpr(schema, filterExpr, in) == False {
 		return model.Message{}, nil
 	}
 

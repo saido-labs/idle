@@ -84,8 +84,14 @@ func (i IntegerValue) GetType() Type {
 	return TypeInteger
 }
 
-func (i IntegerValue) Cast(target Type) Value {
-	panic("implement me")
+func (i *IntegerValue) Cast(target Type) Value {
+	switch target {
+	case TypeInteger:
+		return i
+	default:
+		log.Fatalf("unsupported type %v", target)
+		return nil
+	}
 }
 
 type FloatValue struct {
@@ -328,6 +334,12 @@ func evaluateFunc(schema RowSchema, e *Function, in *Row) Value {
 	switch fnName := strings.ToLower(e.Name); fnName {
 	case "concat":
 		return concat(schema, e, in)
+	case "upper":
+		return upper(schema, e, in)
+	case "lower":
+		return lower(schema, e, in)
+	case "left":
+		return left(schema, e, in)
 	default:
 		panic(fnName + " is not yet implemented")
 	}
@@ -335,7 +347,7 @@ func evaluateFunc(schema RowSchema, e *Function, in *Row) Value {
 
 // depends on context? in a select
 // this means grab the column at e
-func evaluateIntegerValue(_ RowSchema, e *IntegerValue, in *Row) Value {
+func evaluateIndex(_ RowSchema, e *IntegerValue, in *Row) Value {
 	// downsizing edge-case.
 	index := int(e.Value)
 
@@ -346,7 +358,13 @@ func evaluateIntegerValue(_ RowSchema, e *IntegerValue, in *Row) Value {
 	return in.GetColumn(adjustedIndex)
 }
 
-func evaluateConstant(schema RowSchema, e *StringValue, in *Row) Value {
+// depends on context? in a select
+// this means grab the column at e
+func evaluateIntegerValue(schema RowSchema, e *IntegerValue, in *Row) Value {
+	return evaluateConstant(schema, e, in)
+}
+
+func evaluateConstant(schema RowSchema, e Value, in *Row) Value {
 	return e
 }
 
@@ -375,6 +393,28 @@ func evaluate(schema RowSchema, e Value, in *Row) Value {
 		return evaluateRowIdentifier(schema, e, in)
 	case *IntegerValue:
 		return evaluateIntegerValue(schema, e, in)
+	case *StringValue:
+		return evaluateConstant(schema, e, in)
+	default:
+		log.Println(reflect.TypeOf(e), "not yet implemented")
+		panic("not yet handled")
+	}
+}
+
+func evaluateRootLevelExpr(schema RowSchema, e Value, in *Row) Value {
+	switch e := e.(type) {
+	case *Function:
+		return evaluateFunc(schema, e, in)
+	case *BinaryExpr:
+		return evaluateBinaryExpr(schema, e, in)
+	case *RowIdentifier:
+		return evaluateRowIdentifier(schema, e, in)
+
+	case *IntegerValue:
+		// at the ROOT level this is an index. any deeper
+		// and it's the actual constant value.
+		return evaluateIndex(schema, e, in)
+
 	case *StringValue:
 		return evaluateConstant(schema, e, in)
 	default:

@@ -30,7 +30,6 @@ func Start(pipeline api.Pipeline, timeout time.Duration) {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		log.Println("Starting pipeline")
 		pipeline.Start()
 	}()
 

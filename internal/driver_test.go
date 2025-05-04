@@ -35,9 +35,11 @@ func Test_PipelineToStdout_BasicMapAndFilter(t *testing.T) {
 			&mockedSource{
 				messages: []string{
 					`{ "content": "hello!", "author_name": "felix angell" }`,
+
 					// fixme: felix error handling strat for missing keys.
 					//`{ "content": "foo" }`,
 					//`{ "content": "bar" }`,
+
 					`{ "content": "baz", "author_name": "john doe" }`,
 					`{ "content": "toast", "author_name": "john doe" }`,
 				},
@@ -48,7 +50,7 @@ func Test_PipelineToStdout_BasicMapAndFilter(t *testing.T) {
 
 		// simple processor to take the first char
 		Processors: []api.PipelineStep{
-			api.NewPipelineStep("input.parser", api.NewMessageParser(), api.RowSchema{
+			api.NewPipelineStep("input.parser", api.NewJqMessageParser(), api.RowSchema{
 				Column: []string{"$.content", "$.author_name"},
 				Types:  []api.Type{api.TypeString, api.TypeString},
 			}),

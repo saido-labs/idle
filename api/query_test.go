@@ -8,6 +8,41 @@ import (
 // TODO float values
 // TODO string values
 
+// FIXME move to parameterised test
+func TestQuery_BuildEvalTree_Functions(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "fn:upper",
+			input:    "SELECT upper('hello')",
+			expected: "HELLO",
+		},
+		{
+			name:     "fn:lower",
+			input:    "SELECT lower('HELLO world')",
+			expected: "hello world",
+		},
+		{
+			name:     "fn:left",
+			input:    "SELECT left('hello', 1)",
+			expected: "h",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			query := NewQuery(tc.input)
+			res := evaluate(RowSchema{}, query.GetEvaluation().Reads[0], &Row{})
+			if !res.Equals(&StringValue{tc.expected}) {
+				t.Errorf("expected %s, got %s", tc.expected, res)
+			}
+		})
+	}
+
+}
+
 func TestQuery_BuildEvalTree_SingleIdentifierRead(t *testing.T) {
 	query := NewQuery("SELECT content")
 

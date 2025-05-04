@@ -7,11 +7,9 @@ import (
 )
 
 type Pipeline struct {
-	Input      []Source
-	Processors []PipelineStep
-	Output     Sink
-
-	// Configuration
+	Input       []Source
+	Processors  []PipelineStep
+	Output      Sink
 	Parallelism int
 }
 

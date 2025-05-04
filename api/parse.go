@@ -52,6 +52,6 @@ func ValueFromType(s Type, value string) Value {
 	}
 }
 
-func NewMessageParser() Processor {
+func NewJqMessageParser() Processor {
 	return &JqMessageParser{}
 }

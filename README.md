@@ -16,4 +16,5 @@ with point #1 as priority.
 - sql queries are parsed on start and baked in as an Eval Tree
 - protobuf is supported out of the box
   - how do we specify schemas?
-- 
+- error handling with side-outputs
+- streams mode to load multiple pipelines in one process
