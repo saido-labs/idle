@@ -15,7 +15,7 @@ type JqMessageParser struct{}
 func (j *JqMessageParser) Process(p *Pipeline, schema RowSchema, msg model.Message) (model.Message, error) {
 	v := interface{}(nil)
 	if err := json.Unmarshal(msg.Data, &v); err != nil {
-		return model.Message{}, err
+		return msg, err
 	}
 
 	res := Row{
@@ -23,12 +23,14 @@ func (j *JqMessageParser) Process(p *Pipeline, schema RowSchema, msg model.Messa
 	}
 
 	for idx, column := range schema.Column {
-		e, _ := jsonpath.New(column)
+		e, err := jsonpath.New(column)
+		if err != nil {
+			return msg, err
+		}
 
-		// eval depends on type
 		value, err := e.EvalString(context.Background(), v)
 		if err != nil {
-			return model.Message{}, err
+			return msg, err
 		}
 
 		// whats best way to package this data?
@@ -37,7 +39,7 @@ func (j *JqMessageParser) Process(p *Pipeline, schema RowSchema, msg model.Messa
 
 	var buff bytes.Buffer
 	if err := gob.NewEncoder(&buff).Encode(res); err != nil {
-		return model.Message{}, err
+		return msg, err
 	}
 
 	return model.Message{Data: buff.Bytes()}, nil
@@ -48,7 +50,7 @@ func ValueFromType(s Type, value string) Value {
 	case TypeString:
 		return &StringValue{Value: value}
 	default:
-		panic(fmt.Sprintf("unknown type: %v", s))
+		panic(fmt.Sprintf("unknown type: %v '%v'", s, value))
 	}
 }
 

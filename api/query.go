@@ -37,16 +37,30 @@ func (q *Query) Process(p *Pipeline, schema RowSchema, msg model.Message) (model
 	}
 
 	for idx, value := range q.GetEvaluation().Reads {
-		rd.SetColumn(idx, evaluateRootLevelExpr(schema, value, in))
+		rootExpr, err := evaluateRootLevelExpr(schema, value, in)
+		if err != nil {
+			log.Fatalf("Query(%s): Error: %v\n", q.query, err.Error())
+		}
+		
+		rd.SetColumn(idx, rootExpr)
 	}
 
 	out := model.NewMessage(RowDataToBlob(rd))
 
 	// compute if we filter or not for this
 	// specific row.
-	filterExpr := q.GetEvaluation().Filter
-	if filterExpr != nil && evaluateRootLevelExpr(schema, filterExpr, in) == False {
-		return model.Message{}, nil
+	if filterExpr := q.GetEvaluation().Filter; filterExpr != nil {
+		res, err := evaluateRootLevelExpr(schema, filterExpr, in)
+		if err != nil {
+			log.Fatalf("Query(%s): Error: %v\n", q.query, err.Error())
+		}
+
+		if res == False {
+			return model.Message{}, nil
+		} else {
+			// filtered out
+			log.Printf("Query(%s): Filter expression false\n", q.query)
+		}
 	}
 
 	return out, nil

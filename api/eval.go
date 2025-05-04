@@ -86,11 +86,12 @@ func (i IntegerValue) GetType() Type {
 
 func (i *IntegerValue) Cast(target Type) Value {
 	switch target {
+	case TypeString:
+		return &StringValue{Value: fmt.Sprintf("%v", i.Value)}
 	case TypeInteger:
 		return i
 	default:
-		log.Fatalf("unsupported type %v", target)
-		return nil
+		panic(fmt.Sprintf("unsupported type %v -> %v", i, target))
 	}
 }
 
@@ -321,13 +322,13 @@ func (q *Evaluator) Eval(query string) *Evaluation {
 	}
 }
 
-func evaluateRowIdentifier(schema RowSchema, e *RowIdentifier, in *Row) Value {
+func evaluateRowIdentifier(schema RowSchema, e *RowIdentifier, in *Row) (Value, error) {
 	// return the value from the message
 	idx := schema.ColIndex(e.Name)
 	if idx == -1 {
-		panic("no column found " + e.Name)
+		return nil, fmt.Errorf("no such column '%s' exists", e.Name)
 	}
-	return in.GetColumn(idx)
+	return in.GetColumn(idx), nil
 }
 
 func evaluateFunc(schema RowSchema, e *Function, in *Row) Value {
@@ -347,7 +348,7 @@ func evaluateFunc(schema RowSchema, e *Function, in *Row) Value {
 
 // depends on context? in a select
 // this means grab the column at e
-func evaluateIndex(_ RowSchema, e *IntegerValue, in *Row) Value {
+func evaluateIndex(_ RowSchema, e *IntegerValue, in *Row) (Value, error) {
 	// downsizing edge-case.
 	index := int(e.Value)
 
@@ -355,7 +356,7 @@ func evaluateIndex(_ RowSchema, e *IntegerValue, in *Row) Value {
 	// so we have to normalize them
 	adjustedIndex := index - 1
 
-	return in.GetColumn(adjustedIndex)
+	return in.GetColumn(adjustedIndex), nil
 }
 
 // depends on context? in a select
@@ -368,43 +369,53 @@ func evaluateConstant(schema RowSchema, e Value, in *Row) Value {
 	return e
 }
 
-func evaluateBinaryExpr(schema RowSchema, expr *BinaryExpr, in *Row) Value {
-	lhand := evaluate(schema, expr.Left, in)
-	rhand := evaluate(schema, expr.Right, in)
+func evaluateBinaryExpr(schema RowSchema, expr *BinaryExpr, in *Row) (Value, error) {
+	lhand, err := evaluate(schema, expr.Left, in)
+	if err != nil {
+		return nil, err
+	}
+
+	rhand, err := evaluate(schema, expr.Right, in)
+	if err != nil {
+		return nil, err
+	}
 
 	switch expr.Operator {
 	case "=":
 		return BooleanValue{
 			Value: lhand.Equals(rhand),
-		}
+		}, nil
 
 	default:
 		panic("not yet implemented")
 	}
 }
 
-func evaluate(schema RowSchema, e Value, in *Row) Value {
+func evaluate(schema RowSchema, e Value, in *Row) (Value, error) {
 	switch e := e.(type) {
 	case *Function:
-		return evaluateFunc(schema, e, in)
+		return evaluateFunc(schema, e, in), nil
 	case *BinaryExpr:
 		return evaluateBinaryExpr(schema, e, in)
 	case *RowIdentifier:
 		return evaluateRowIdentifier(schema, e, in)
 	case *IntegerValue:
-		return evaluateIntegerValue(schema, e, in)
+		return evaluateIntegerValue(schema, e, in), nil
 	case *StringValue:
-		return evaluateConstant(schema, e, in)
+		return evaluateConstant(schema, e, in), nil
 	default:
 		log.Println(reflect.TypeOf(e), "not yet implemented")
 		panic("not yet handled")
 	}
 }
 
-func evaluateRootLevelExpr(schema RowSchema, e Value, in *Row) Value {
+/*
+nit: this can fail when resolving an identifier...
+*/
+func evaluateRootLevelExpr(schema RowSchema, e Value, in *Row) (Value, error) {
 	switch e := e.(type) {
 	case *Function:
-		return evaluateFunc(schema, e, in)
+		return evaluateFunc(schema, e, in), nil
 	case *BinaryExpr:
 		return evaluateBinaryExpr(schema, e, in)
 	case *RowIdentifier:
@@ -416,7 +427,7 @@ func evaluateRootLevelExpr(schema RowSchema, e Value, in *Row) Value {
 		return evaluateIndex(schema, e, in)
 
 	case *StringValue:
-		return evaluateConstant(schema, e, in)
+		return evaluateConstant(schema, e, in), nil
 	default:
 		log.Println(reflect.TypeOf(e), "not yet implemented")
 		panic("not yet handled")

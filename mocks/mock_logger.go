@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"bytes"
+	"log"
 )
 
 type MockLogger struct {
@@ -9,6 +10,8 @@ type MockLogger struct {
 }
 
 func (m *MockLogger) Write(i []byte) error {
+	log.Println("MockLogger", string(i))
+
 	_, err := m.buf.Write(i)
 	return err
 }

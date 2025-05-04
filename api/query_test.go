@@ -8,6 +8,13 @@ import (
 // TODO float values
 // TODO string values
 
+func TestQuery_BuildEvalTree_FilterByInterval(t *testing.T) {
+	// syntax error...
+	t.Skipf("not supported in postgres?")
+
+	NewQuery("SELECT created_at WHERE created_at >= now() - interval '1 hour'")
+}
+
 // FIXME move to parameterised test
 func TestQuery_BuildEvalTree_Functions(t *testing.T) {
 	testCases := []struct {
@@ -29,6 +36,11 @@ func TestQuery_BuildEvalTree_Functions(t *testing.T) {
 			name:     "fn:left",
 			input:    "SELECT left('hello', 1)",
 			expected: "h",
+		},
+		{
+			name:     "fn:right",
+			input:    "SELECT right('hello', 1)",
+			expected: "o",
 		},
 	}
 	for _, tc := range testCases {

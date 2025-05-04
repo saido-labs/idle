@@ -10,12 +10,14 @@ type Pipeline struct {
 	Input       []Source
 	Processors  []PipelineStep
 	Output      Sink
+	SideOutput  Sink
 	Parallelism int
 }
 
 func (p Pipeline) Start() {
 	messages := make(chan model.Message)
 	processed := make(chan model.Message)
+	failed := make(chan model.Message)
 
 	var wg sync.WaitGroup
 
@@ -41,20 +43,38 @@ func (p Pipeline) Start() {
 			for currentMessage := range messages {
 				message := currentMessage
 
+				processingFailed := false
+
 				for _, step := range p.Processors {
 					processedMessage, err := step.Proc.Process(&p, step.Schema, message)
+					message = processedMessage
+
 					if err != nil {
-						log.Println(err)
+						log.Printf("Error processing message %v: %v", string(message.Data), err)
+						processingFailed = true
 						break
 					}
-
-					message = processedMessage
 				}
 
-				processed <- message
+				if processingFailed {
+					failed <- message
+				} else {
+					processed <- message
+				}
 			}
 		}(i)
 	}
+
+	go func() {
+		for failed := range failed {
+			if p.SideOutput != nil {
+				err := p.SideOutput.Write(failed.Data)
+				if err != nil {
+					log.Println("Failed to write to side output", err)
+				}
+			}
+		}
+	}()
 
 	go func() {
 		for processed := range processed {

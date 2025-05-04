@@ -24,6 +24,56 @@ func (m *mockedSource) Read() ([]byte, error) {
 	return []byte(msg), nil
 }
 
+func Test_PipelineToStdout_BasicMapAndFilter_GracefulErrors(t *testing.T) {
+	output := &mocks.MockLogger{}
+	sideOutput := &mocks.MockLogger{}
+
+	cfg := api.Pipeline{
+		// we only want one input but allow for multiple
+		// if we have something like a re-try
+
+		Input: []api.Source{
+			&mockedSource{
+				messages: []string{
+					`{ "content": "foo" }`,
+				},
+			},
+		},
+
+		Output:     output,
+		SideOutput: sideOutput,
+
+		Processors: []api.PipelineStep{
+			api.NewPipelineStep("input.parser", api.NewJqMessageParser(), api.RowSchema{
+				Column: []string{"$.content", "$.author_name"},
+				Types:  []api.Type{api.TypeString, api.TypeString},
+			}),
+
+			// where author name is Felix
+			// pass along the content and author_name fields
+			api.NewPipelineStep("author.filter", api.NewQuery("SELECT author_name WHERE author_name = 'felix angell'"), api.RowSchema{
+				Column: []string{"content", "author_name"},
+				Types:  []api.Type{api.TypeString, api.TypeString},
+			}),
+
+			api.NewPipelineStep("output.processor", api.NewJsonEncoder(), api.RowSchema{
+				Column: []string{"result"},
+				Types:  []api.Type{api.TypeString},
+			}),
+		},
+
+		Parallelism: 4,
+	}
+
+	Start(cfg, 1*time.Second)
+
+	result := output.Output()
+	assert.Emptyf(t, result, "Expected output to be empty.")
+
+	result = sideOutput.Output()
+	assert.Equal(t, `{ "content": "foo" }`, result)
+}
+
 func Test_PipelineToStdout_BasicMapAndFilter(t *testing.T) {
 	output := &mocks.MockLogger{}
 
@@ -63,7 +113,7 @@ func Test_PipelineToStdout_BasicMapAndFilter(t *testing.T) {
 			}),
 
 			// we need to alias with a name for mapping against a schema output?
-			api.NewPipelineStep("article.join", api.NewQuery("SELECT concat(2, ':', 1)"), api.RowSchema{
+			api.NewPipelineStep("article.join", api.NewQuery("SELECT concat(content, ':', author_name)"), api.RowSchema{
 				Column: []string{"result"},
 				Types:  []api.Type{api.TypeString},
 			}),

@@ -9,13 +9,23 @@ func left(schema RowSchema, fn *Function, in *Row) Value {
 		panic("function needs exactly two parameters")
 	}
 
-	res, ok := evaluate(schema, fn.Params[0], in).Cast(TypeString).(*StringValue)
+	firstParam, err := evaluate(schema, fn.Params[0], in)
+	if err != nil {
+		panic(err)
+	}
+
+	res, ok := firstParam.Cast(TypeString).(*StringValue)
 	if !ok {
 		panic("expected string evaluation")
 	}
 
 	// todo: support negative values and out of bounds properly
-	cut, ok := evaluate(schema, fn.Params[1], in).Cast(TypeInteger).(*IntegerValue)
+	secondParam, err := evaluate(schema, fn.Params[1], in)
+	if err != nil {
+		panic(err)
+	}
+
+	cut, ok := secondParam.Cast(TypeInteger).(*IntegerValue)
 	if !ok {
 		panic("expected int evaluation")
 	}
@@ -28,7 +38,12 @@ func lower(schema RowSchema, fn *Function, in *Row) Value {
 		panic("function needs exactly one parameter")
 	}
 
-	res, ok := evaluate(schema, fn.Params[0], in).Cast(TypeString).(*StringValue)
+	firstParam, err := evaluate(schema, fn.Params[0], in)
+	if err != nil {
+		panic(err)
+	}
+
+	res, ok := firstParam.Cast(TypeString).(*StringValue)
 	if !ok {
 		panic("expected string evaluation")
 	}
@@ -41,7 +56,12 @@ func upper(schema RowSchema, fn *Function, in *Row) Value {
 		panic("function needs exactly one parameter")
 	}
 
-	res, ok := evaluate(schema, fn.Params[0], in).Cast(TypeString).(*StringValue)
+	firstParam, err := evaluate(schema, fn.Params[0], in)
+	if err != nil {
+		panic(err)
+	}
+
+	res, ok := firstParam.Cast(TypeString).(*StringValue)
 	if !ok {
 		panic("expected string evaluation")
 	}
@@ -53,7 +73,10 @@ func concat(schema RowSchema, fn *Function, rd *Row) Value {
 	var sb strings.Builder
 
 	for _, p := range fn.Params {
-		result := evaluate(schema, p, rd)
+		result, err := evaluate(schema, p, rd)
+		if err != nil {
+			panic(err)
+		}
 
 		conv, ok := result.Cast(TypeString).(*StringValue)
 		if !ok {
