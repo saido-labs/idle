@@ -24,8 +24,25 @@ func TestQuery_BuildEvalTree_SingleIdentifierRead(t *testing.T) {
 	assert.Equal(t, "content", ri.Name)
 }
 
-func TestQuery_BuildEvalTree(t *testing.T) {
-	query := NewQuery("SELECT LEFT(content, 2) WHERE author_id = 'felix'")
+func TestQuery_BuildEvalTree_SelectWithFunction_AndFilter(t *testing.T) {
+	query := NewQuery("SELECT content, author WHERE author = 'felix angell'")
+
+	res := query.GetEvaluation()
+	assert.NotNil(t, res)
+	assert.Len(t, res.Reads, 2)
+
+	assert.NotEmptyf(t, res.Filters, "Expected a filter by author name")
+
+	comp, ok := res.Filters[0].(*BinaryExpr)
+	assert.True(t, ok)
+
+	assert.Equal(t, "=", comp.Operator)
+	assert.Equal(t, NewRowIdentifier("author"), comp.Left)
+	assert.Equal(t, &StringValue{Value: "felix angell"}, comp.Right)
+}
+
+func TestQuery_BuildEvalTree_SelectWithFunction(t *testing.T) {
+	query := NewQuery("SELECT LEFT(content, 2)")
 
 	res := query.GetEvaluation()
 	assert.NotNil(t, res)
