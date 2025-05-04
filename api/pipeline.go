@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-type PipelineConfig struct {
+type Pipeline struct {
 	Input      []Source
 	Processors []PipelineStep
 	Output     Sink
@@ -15,17 +15,13 @@ type PipelineConfig struct {
 	Parallelism int
 }
 
-type Pipeline struct {
-	Config PipelineConfig
-}
-
 func (p Pipeline) Start() {
 	messages := make(chan model.Message)
 	processed := make(chan model.Message)
 
 	var wg sync.WaitGroup
 
-	for _, input := range p.Config.Input {
+	for _, input := range p.Input {
 		go func(src Source) {
 			for {
 				msg, err := src.Read()
@@ -38,7 +34,7 @@ func (p Pipeline) Start() {
 		}(input)
 	}
 
-	workers := p.Config.Parallelism
+	workers := p.Parallelism
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func(wid int) {
@@ -47,7 +43,7 @@ func (p Pipeline) Start() {
 			for currentMessage := range messages {
 				message := currentMessage
 
-				for _, step := range p.Config.Processors {
+				for _, step := range p.Processors {
 					processedMessage, err := step.Proc.Process(&p, step.Schema, message)
 					if err != nil {
 						log.Println(err)
@@ -64,7 +60,7 @@ func (p Pipeline) Start() {
 
 	go func() {
 		for processed := range processed {
-			err := p.Config.Output.Write(processed.Data)
+			err := p.Output.Write(processed.Data)
 			if err != nil {
 				log.Println(err)
 			}

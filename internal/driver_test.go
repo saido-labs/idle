@@ -27,7 +27,7 @@ func (m *mockedSource) Read() ([]byte, error) {
 func Test_PipelineToStdout_BasicMapAndFilter(t *testing.T) {
 	output := &mocks.MockLogger{}
 
-	cfg := api.PipelineConfig{
+	cfg := api.Pipeline{
 		// we only want one input but allow for multiple
 		// if we have something like a re-try
 

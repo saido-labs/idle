@@ -22,16 +22,13 @@ func init() {
 	gob.Register(&api.FloatValue{})
 }
 
-func Start(cfg api.PipelineConfig, timeout time.Duration) {
+func Start(pipeline api.Pipeline, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	pipeline := api.Pipeline{
-		Config: cfg,
-	}
 	go func() {
 		log.Println("Starting pipeline")
 		pipeline.Start()
